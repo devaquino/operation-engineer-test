@@ -18,6 +18,7 @@ class PolicyAccounting(object):
     """
     def __init__(self, policy_id):
         self.policy = Policy.query.filter_by(id=policy_id).one()
+        self.billing_schedules = {'Annual': None, 'Semi-Annual': 3, 'Quarterly': 4, 'Monthly': 12}
 
         if not self.policy.invoices:
             self.make_invoices()
@@ -93,7 +94,6 @@ class PolicyAccounting(object):
         for invoice in self.policy.invoices:
             invoice.delete()
 
-        billing_schedules = {'Annual': None, 'Semi-Annual': 3, 'Quarterly': 4, 'Monthly': 12}
 
         invoices = []
         first_invoice = Invoice(self.policy.id,
@@ -106,35 +106,51 @@ class PolicyAccounting(object):
         if self.policy.billing_schedule == "Annual":
             pass
         elif self.policy.billing_schedule == "Two-Pay":
-            first_invoice.amount_due = first_invoice.amount_due / billing_schedules.get(self.policy.billing_schedule)
-            for i in range(1, billing_schedules.get(self.policy.billing_schedule)):
+            self.set_first_invoice_amout_due(first_invoice, self.policy.billing_schedule)
+            for i in range(1, self.billing_schedules.get(self.policy.billing_schedule)):
                 months_after_eff_date = i*6
                 bill_date = self.policy.effective_date + relativedelta(months=months_after_eff_date)
                 invoice = Invoice(self.policy.id,
                                   bill_date,
                                   bill_date + relativedelta(months=1),
                                   bill_date + relativedelta(months=1, days=14),
-                                  self.policy.annual_premium / billing_schedules.get(self.policy.billing_schedule))
+                                  self.policy.annual_premium / self.billing_schedules.get(self.policy.billing_schedule))
                 invoices.append(invoice)
         elif self.policy.billing_schedule == "Quarterly":
-            first_invoice.amount_due = first_invoice.amount_due / billing_schedules.get(self.policy.billing_schedule)
-            for i in range(1, billing_schedules.get(self.policy.billing_schedule)):
+            self.set_first_invoice_amout_due(first_invoice, self.policy.billing_schedule)
+            for i in range(1, self.billing_schedules.get(self.policy.billing_schedule)):
                 months_after_eff_date = i*3
                 bill_date = self.policy.effective_date + relativedelta(months=months_after_eff_date)
                 invoice = Invoice(self.policy.id,
                                   bill_date,
                                   bill_date + relativedelta(months=1),
                                   bill_date + relativedelta(months=1, days=14),
-                                  self.policy.annual_premium / billing_schedules.get(self.policy.billing_schedule))
+                                  self.policy.annual_premium / self.billing_schedules.get(self.policy.billing_schedule))
                 invoices.append(invoice)
         elif self.policy.billing_schedule == "Monthly":
-            pass
+            self.set_first_invoice_amout_due(first_invoice, self.policy.billing_schedule)
+            for i in range(1, self.billing_schedules.get(self.policy.billing_schedule)):
+                bill_date = self.policy.effective_date + relativedelta(months=i)
+                invoice = Invoice(self.policy.id,
+                                  bill_date,
+                                  bill_date + relativedelta(months=1),
+                                  bill_date + relativedelta(months=1, days=14),
+                                  self.policy.annual_premium / self.billing_schedules.get(self.policy.billing_schedule))
+                invoices.append(invoice)
         else:
             print "You have chosen a bad billing schedule."
 
         for invoice in invoices:
             db.session.add(invoice)
         db.session.commit()
+
+
+    def set_first_invoice_amout_due(self, first_invoice, billing_schedule):
+        if billing_schedule in self.billing_schedules:
+            first_invoice.amount_due = first_invoice.amount_due / self.billing_schedules.get(
+                self.policy.billing_schedule)
+        else:
+            print "You have chosen a bad billing schedule."
 
 ################################
 # The functions below are for the db and
