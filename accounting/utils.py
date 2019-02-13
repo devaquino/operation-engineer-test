@@ -17,6 +17,9 @@ class PolicyAccounting(object):
      Each policy has its own instance of accounting.
     """
     def __init__(self, policy_id):
+        if type(policy_id) is Policy:
+            policy_id = policy_id.id
+
         self.policy = Policy.query.filter_by(id=policy_id).one()
         self.billing_schedules = {'Annual': None, 'Semi-Annual': 3, 'Quarterly': 4, 'Monthly': 12}
 
@@ -28,7 +31,7 @@ class PolicyAccounting(object):
             date_cursor = datetime.now().date()
 
         invoices = Invoice.query.filter_by(policy_id=self.policy.id)\
-                                .filter(Invoice.bill_date < date_cursor)\
+                                .filter(Invoice.bill_date <= date_cursor)\
                                 .order_by(Invoice.bill_date)\
                                 .all()
         due_now = 0
@@ -36,7 +39,7 @@ class PolicyAccounting(object):
             due_now += invoice.amount_due
 
         payments = Payment.query.filter_by(policy_id=self.policy.id)\
-                                .filter(Payment.transaction_date < date_cursor)\
+                                .filter(Payment.transaction_date <= date_cursor)\
                                 .all()
         for payment in payments:
             due_now -= payment.amount_paid
@@ -93,7 +96,6 @@ class PolicyAccounting(object):
     def make_invoices(self):
         for invoice in self.policy.invoices:
             invoice.delete()
-
 
         invoices = []
         first_invoice = Invoice(self.policy.id,
