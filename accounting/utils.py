@@ -1,5 +1,7 @@
 #!/user/bin/env python2.7
 
+import logging
+
 from datetime import date, datetime
 from dateutil.relativedelta import relativedelta
 
@@ -13,8 +15,13 @@ This is the base code for the engineer project.
 """
 
 class PolicyAccounting(object):
+
     """
-     Each policy has its own instance of accounting.
+    This class provides an accounting for each policy.
+    Attributes:
+        attr1 - policy (Policy or int): This attribute can represent a policy object
+                               or just a id from a policy.
+        attr2 - billing_schedules (dict): Represents possible schedules for a policy.
     """
     def __init__(self, policy_id):
         if type(policy_id) is Policy:
@@ -26,6 +33,10 @@ class PolicyAccounting(object):
         if not self.policy.invoices:
             self.make_invoices()
 
+    """
+    This method returns the current debit from a policy.
+    It's a sum from all invoices minus each payment created.
+    """
     def return_account_balance(self, date_cursor=None):
         if not date_cursor:
             date_cursor = datetime.now().date()
@@ -46,6 +57,9 @@ class PolicyAccounting(object):
 
         return due_now
 
+    """
+    This method creates a payment for a policy
+    """
     def make_payment(self, contact_id=None, date_cursor=None, amount=0):
         if not date_cursor:
             date_cursor = datetime.now().date()
@@ -62,18 +76,22 @@ class PolicyAccounting(object):
                           date_cursor)
         db.session.add(payment)
         db.session.commit()
+        logging.info(" new payment was created")
 
         return payment
 
+    """
+    If this function returns true, an invoice
+    on a policy has passed the due date without
+    being paid in full. However, it has not necessarily
+    made it to the cancel_date yet.
+    """
     def evaluate_cancellation_pending_due_to_non_pay(self, date_cursor=None):
-        """
-         If this function returns true, an invoice
-         on a policy has passed the due date without
-         being paid in full. However, it has not necessarily
-         made it to the cancel_date yet.
-        """
         pass
 
+    """
+    This method realize a cancelation for invoices.
+    """
     def evaluate_cancel(self, date_cursor=None):
         if not date_cursor:
             date_cursor = datetime.now().date()
@@ -92,7 +110,9 @@ class PolicyAccounting(object):
         else:
             print "THIS POLICY SHOULD NOT CANCEL"
 
-
+    """
+    This method creates invoices according to policy's billing schedule
+    """
     def make_invoices(self):
         for invoice in self.policy.invoices:
             invoice.delete()
@@ -108,7 +128,7 @@ class PolicyAccounting(object):
         if self.policy.billing_schedule == "Annual":
             pass
         elif self.policy.billing_schedule == "Two-Pay":
-            self.set_first_invoice_amout_due(first_invoice, self.policy.billing_schedule)
+            self.set_first_invoice_amount_due(first_invoice, self.policy.billing_schedule)
             for i in range(1, self.billing_schedules.get(self.policy.billing_schedule)):
                 months_after_eff_date = i*6
                 bill_date = self.policy.effective_date + relativedelta(months=months_after_eff_date)
@@ -119,7 +139,7 @@ class PolicyAccounting(object):
                                   self.policy.annual_premium / self.billing_schedules.get(self.policy.billing_schedule))
                 invoices.append(invoice)
         elif self.policy.billing_schedule == "Quarterly":
-            self.set_first_invoice_amout_due(first_invoice, self.policy.billing_schedule)
+            self.set_first_invoice_amount_due(first_invoice, self.policy.billing_schedule)
             for i in range(1, self.billing_schedules.get(self.policy.billing_schedule)):
                 months_after_eff_date = i*3
                 bill_date = self.policy.effective_date + relativedelta(months=months_after_eff_date)
@@ -130,7 +150,7 @@ class PolicyAccounting(object):
                                   self.policy.annual_premium / self.billing_schedules.get(self.policy.billing_schedule))
                 invoices.append(invoice)
         elif self.policy.billing_schedule == "Monthly":
-            self.set_first_invoice_amout_due(first_invoice, self.policy.billing_schedule)
+            self.set_first_invoice_amount_due(first_invoice, self.policy.billing_schedule)
             for i in range(1, self.billing_schedules.get(self.policy.billing_schedule)):
                 bill_date = self.policy.effective_date + relativedelta(months=i)
                 invoice = Invoice(self.policy.id,
@@ -143,11 +163,15 @@ class PolicyAccounting(object):
             print "You have chosen a bad billing schedule."
 
         for invoice in invoices:
+            logging.info("Creating invoices...")
             db.session.add(invoice)
         db.session.commit()
+        logging.info("{} invoices were created.".format(len(invoices)))
 
-
-    def set_first_invoice_amout_due(self, first_invoice, billing_schedule):
+    """
+    This method sets the first amount due for the first invoice from a policy.
+    """
+    def set_first_invoice_amount_due(self, first_invoice, billing_schedule):
         if billing_schedule in self.billing_schedules:
             first_invoice.amount_due = first_invoice.amount_due / self.billing_schedules.get(
                 self.policy.billing_schedule)
