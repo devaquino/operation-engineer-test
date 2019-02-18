@@ -142,3 +142,22 @@ class TestReturnAccountBalance(unittest.TestCase):
             self.payments.append(pa.make_payment(contact_id=self.policy.named_insured,
                                                  date_cursor=invoices[i].bill_date, amount=100))
         self.assertEquals(pa.return_account_balance(date_cursor=invoices[11].bill_date), 0)
+
+    def test_two_pay_on_first_installment_bill_date(self):
+        self.policy.billing_schedule = "Two-Pay"
+        pa = PolicyAccounting(self.policy)
+        invoices = Invoice.query.filter_by(policy_id=self.policy.id)\
+            .order_by(Invoice.bill_date).all()
+        self.payments.append(pa.make_payment(contact_id=self.policy.named_insured,
+                                             date_cursor=invoices[0].bill_date, amount=600))
+        self.assertEquals(pa.return_account_balance(date_cursor=invoices[1].bill_date), 600)
+
+    def test_two_pay_on_last_installment_bill_date(self):
+        self.policy.billing_schedule = "Two-Pay"
+        pa = PolicyAccounting(self.policy)
+        invoices = Invoice.query.filter_by(policy_id=self.policy.id) \
+            .order_by(Invoice.bill_date).all()
+        for i in range(1, 3):
+            self.payments.append(pa.make_payment(contact_id=self.policy.named_insured,
+                                                 date_cursor=invoices[0].bill_date, amount=600))
+        self.assertEquals(pa.return_account_balance(date_cursor=invoices[1].bill_date), 0)

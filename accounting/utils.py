@@ -28,7 +28,7 @@ class PolicyAccounting(object):
             policy_id = policy_id.id
 
         self.policy = Policy.query.filter_by(id=policy_id).one()
-        self.billing_schedules = {'Annual': None, 'Semi-Annual': 3, 'Quarterly': 4, 'Monthly': 12}
+        self.billing_schedules = {'Annual': None, 'Two-Pay': 2, 'Semi-Annual': 3, 'Quarterly': 4, 'Monthly': 12}
 
         if not self.policy.invoices:
             self.make_invoices()
