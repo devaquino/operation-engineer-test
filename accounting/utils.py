@@ -4,6 +4,7 @@ import logging
 
 from datetime import date, datetime
 from dateutil.relativedelta import relativedelta
+from sqlalchemy import and_
 
 from accounting import db
 from models import Contact, Invoice, Payment, Policy
@@ -87,7 +88,17 @@ class PolicyAccounting(object):
     made it to the cancel_date yet.
     """
     def evaluate_cancellation_pending_due_to_non_pay(self, date_cursor=None):
-        pass
+        if not date_cursor:
+            date_cursor = datetime.now().date()
+
+        invoices = Invoice.query.filter_by(policy_id=self.policy.id)\
+                                .filter(Invoice.due_date < date_cursor)\
+                                .all()
+
+        if invoices:
+            return True
+
+        return False
 
     """
     This method realize a cancelation for invoices.

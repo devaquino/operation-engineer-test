@@ -161,3 +161,25 @@ class TestReturnAccountBalance(unittest.TestCase):
             self.payments.append(pa.make_payment(contact_id=self.policy.named_insured,
                                                  date_cursor=invoices[0].bill_date, amount=600))
         self.assertEquals(pa.return_account_balance(date_cursor=invoices[1].bill_date), 0)
+
+    def test_evaluate_cancellation_pending_on_cancel_date(self):
+        self.policy.billing_schedule = "Annual"
+        pa = PolicyAccounting(self.policy.id)
+        self.assertEquals(pa.evaluate_cancellation_pending_due_to_non_pay(date(2015, 2, 15)), True)
+
+    def test_evaluate_cancellation_pending_before_due_date(self):
+        self.policy.billing_schedule = "Annual"
+        pa = PolicyAccounting(self.policy.id)
+        self.assertEquals(pa.evaluate_cancellation_pending_due_to_non_pay(date(2015, 1, 14)), False)
+
+    def test_evaluate_cancellation_pending_on_due_date(self):
+        self.policy.billing_schedule = "Annual"
+        pa = PolicyAccounting(self.policy.id)
+        self.assertEquals(pa.evaluate_cancellation_pending_due_to_non_pay(date(2015, 1, 15)), False)
+
+    def test_evaluate_cancellation_pending_after_due_date(self):
+        self.policy.billing_schedule = "Annual"
+        pa = PolicyAccounting(self.policy.id)
+        self.assertEquals(pa.evaluate_cancellation_pending_due_to_non_pay(date(2015, 1, 17)), False)
+
+
