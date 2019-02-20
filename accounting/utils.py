@@ -125,9 +125,6 @@ class PolicyAccounting(object):
     This method creates invoices according to policy's billing schedule
     """
     def make_invoices(self):
-        for invoice in self.policy.invoices:
-            invoice.delete()
-
         invoices = []
         first_invoice = Invoice(self.policy.id,
                                 self.policy.effective_date, #bill_date
@@ -173,8 +170,8 @@ class PolicyAccounting(object):
         else:
             print "You have chosen a bad billing schedule."
 
+        logging.info("Creating invoices...")
         for invoice in invoices:
-            logging.info("Creating invoices...")
             db.session.add(invoice)
         db.session.commit()
         logging.info("{} invoices were created.".format(len(invoices)))
@@ -188,6 +185,28 @@ class PolicyAccounting(object):
                 self.policy.billing_schedule)
         else:
             print "You have chosen a bad billing schedule."
+
+    """
+    This method allows to change a billing schedule policy
+    """
+    def change_billing_schedule(self, billing_schedule=None):
+        if not billing_schedule or billing_schedule == self.policy.billing_schedule:
+            pass
+
+        invoices = Invoice.query.filter_by(policy_id=self.policy.id)\
+                                .filter(Invoice.deleted.is_(False))\
+                                .all()
+
+        if invoices:
+            for invoice in invoices:
+                invoice.deleted = True
+                db.session.add(invoice)
+            db.session.commit()
+
+        self.policy.billing_schedule = billing_schedule
+        self.make_invoices()
+
+
 
 ################################
 # The functions below are for the db and
